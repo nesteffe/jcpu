@@ -27,55 +27,91 @@ uint8_t digits[] = {
 
 void write_display_digits(bool issigned) {
 
-  int16_t min_val = issigned ? -128 : 0;
-  int16_t max_val = issigned ? 127 : 255;
+  uint32_t min_val = issigned ? -32768l : 0l;
+  uint32_t max_val = issigned ? 32767l : 65535l;
 
-  uint16_t start_addr = issigned ? 0x400 : 0;
+  uint32_t start_addr = issigned ? 0x60000 : 0;
 
   Serial.print("Writing "); Serial.print(issigned ? "signed" : "unsigned"); Serial.print(" ones ");
-  for (int16_t value = min_val; value <= max_val; value++) {
+  for (uint32_t value = min_val; value <= max_val; value++) {
 
-    MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 256 : 0) + value, digits[abs(value) % 10]);
-    if ((value % 10) == 0) {
+    MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 65536 : 0) + value, digits[abs(value) % 10]);
+    if ((value % 1000) == 0) {
+      Serial.print(start_addr + ((value < 0) ? 65536 : 0) + value);
       Serial.print(".");
     }
   }
   Serial.println(" done.");
   Serial.print("Writing "); Serial.print(issigned ? "signed" : "unsigned"); Serial.print(" 10s ");
-  for (int16_t value = min_val; value <= max_val; value++) {
+  for (uint32_t value = min_val; value <= max_val; value++) {
 
     if (abs(value) < 10) {
       
-      MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 256 : 0) + value + 0x100, 0);
+      MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 65536 : 0) + value + 0x100, 0);
     } else {
 
-      MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 256 : 0) + value + 0x100, digits[(abs(value) / 10) % 10]);
+      MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 65536 : 0) + value + 0x100, digits[(abs(value) / 10) % 10]);
     }
-    if ((value % 10) == 0) {
-       Serial.print(".");
+    if ((value % 1000) == 0) {
+      Serial.print(start_addr + ((value < 0) ? 65536 : 0) + value);
+      Serial.print(".");
     }
   }
   Serial.println(" done.");
   Serial.print("Writing "); Serial.print(issigned ? "signed" : "unsigned"); Serial.print(" 100s ");
-  for (int16_t value=min_val; value <= max_val; value++) {
+  for (uint32_t value=min_val; value <= max_val; value++) {
 
     if (abs(value) < 100) {
       
-      MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 256 : 0) + value + 0x200, 0);
+      MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 65536 : 0) + value + 0x200, 0);
     } else {
 
-      MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 256 : 0) + value + 0x200, digits[(abs(value) / 100) % 10]);
+      MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 65536 : 0) + value + 0x200, digits[(abs(value) / 100) % 10]);
     }
-    if ((value % 10) == 0) {
+    if ((value % 1000) == 0) {
+      Serial.print(start_addr + ((value < 0) ? 65536 : 0) + value);
       Serial.print(".");
     }
   }
   Serial.println(" done.");
   Serial.print("Writing "); Serial.print(issigned ? "signed" : "unsigned"); Serial.print(" 1000s ");
-  for (int16_t value=min_val; value <= max_val; value++) {
+  for (uint32_t value=min_val; value <= max_val; value++) {
 
-    MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 256 : 0) + value + 0x300, (issigned && (value < 0)) ? DP_HOR_MID : 0);
-    if ((value % 10) == 0) {
+    if (abs(value) < 1000) {
+      
+      MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 65536 : 0) + value + 0x300, 0);
+    } else {
+
+      MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 65536 : 0) + value + 0x300, digits[(abs(value) / 1000) % 10]);
+    }
+    if ((value % 1000) == 0) {
+      Serial.print(start_addr + ((value < 0) ? 65536 : 0) + value);
+      Serial.print(".");
+    }
+  }
+  Serial.println(" done.");
+  Serial.print("Writing "); Serial.print(issigned ? "signed" : "unsigned"); Serial.print(" 10000s ");
+  for (uint32_t value=min_val; value <= max_val; value++) {
+
+    if (abs(value) < 10000) {
+      
+      MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 65536 : 0) + value + 0x400, 0);
+    } else {
+
+      MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 65536 : 0) + value + 0x400, digits[(abs(value) / 10000) % 10]);
+    }
+    if ((value % 1000) == 0) {
+      Serial.print(start_addr + ((value < 0) ? 65536 : 0) + value);
+      Serial.print(".");
+    }
+  }
+  Serial.println(" done.");
+  Serial.print("Writing "); Serial.print(issigned ? "signed" : "unsigned"); Serial.print(" 100000s ");
+  for (uint32_t value=min_val; value <= max_val; value++) {
+
+    MyEEPROM.write_eeprom(start_addr + ((value < 0) ? 65536 : 0) + value + 0x500, (issigned && (value < 0)) ? DP_HOR_MID : 0);
+    if ((value % 1000) == 0) {
+      Serial.print(start_addr + ((value < 0) ? 65536 : 0) + value);
       Serial.print(".");
     }
   }
@@ -87,7 +123,8 @@ void write_display_digits(bool issigned) {
 // the setup function runs once when you press reset or power the board
 void setup() {
   Serial.begin(115200);
-  Serial.print("About to program EEPROM for 7-digit display. Press 'y' to continue ... ");
+  Serial.println();
+  Serial.print("About to program EEPROM for 7-digit display. Press 'y' to continue or 'd' to dump contents ... ");
   while (Serial.available() <= 0);
   char answer = Serial.read();
   Serial.println(answer);
@@ -95,13 +132,21 @@ void setup() {
   if (answer == 'y') {
   
     MyEEPROM.init();
+
+    Serial.print("Erasing EEPROM ... ");
+    MyEEPROM.chip_erase();
+    Serial.println("Done.");
   
     write_display_digits(false);
-    write_display_digits(true);
+    //write_display_digits(true);
     
     #ifdef DUMP
-    MyEEPROM.dump_eeprom(0, 0x7FF);
+    MyEEPROM.dump_eeprom(0, 0x80000);
     #endif
+  }
+  if (answer == 'd'){
+    MyEEPROM.init();
+    MyEEPROM.dump_eeprom(0, 0x80000);
   }
   Serial.println("Have a nice day.");
 }

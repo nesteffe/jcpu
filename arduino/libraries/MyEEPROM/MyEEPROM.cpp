@@ -2,8 +2,11 @@
 #include "Arduino.h"
 #include <stdint.h>
 
+// SRCLK
 #define PIN_SHCLK 3
+// RCLK
 #define PIN_STCLK 4
+// SERIAL
 #define PIN_DS 2
 
 #define PIN_IO0 5
@@ -17,8 +20,8 @@
 
 #define PIN_WE 13
 
-#define MODE_READ 0x0000
-#define MODE_WRITE 0x8000
+#define MODE_READ 0x800000
+#define MODE_WRITE 0x000000
 
 static void pulse(int pin) {
 
@@ -28,12 +31,13 @@ static void pulse(int pin) {
   delay(1);
 }
 
-static void shift_out2(uint16_t value) {
+static void shift_out2(uint32_t value) {
 
   digitalWrite(PIN_SHCLK, LOW);
   digitalWrite(PIN_STCLK, LOW);
-  shiftOut(PIN_DS, PIN_SHCLK, LSBFIRST, value & 0xFF);
-  shiftOut(PIN_DS, PIN_SHCLK, LSBFIRST, (value >> 8) & 0xFF);
+  shiftOut(PIN_DS, PIN_SHCLK, LSBFIRST, value & 0x0000FF);
+  shiftOut(PIN_DS, PIN_SHCLK, LSBFIRST, (value >> 8) & 0x00FF);
+  shiftOut(PIN_DS, PIN_SHCLK, LSBFIRST, (value >> 16) & 0xFF);
   pulse(PIN_STCLK);
 }
 
@@ -45,19 +49,18 @@ static void set_iopin_mode(int pin_mode) {
   }
 }
 
-static void select_address(uint16_t address, uint16_t mode) {
+static void select_address(uint32_t address, uint32_t mode) {
 
   if (mode == MODE_READ) {
     set_iopin_mode(INPUT);
   }
-  shift_out2(address | mode);
   if (mode == MODE_WRITE) {
-
-    set_iopin_mode(OUTPUT);
+	set_iopin_mode(OUTPUT);
   }
+  shift_out2(address | mode);
 }
 
-uint8_t MyEEPROM::read_eeprom(uint16_t address) {
+uint8_t MyEEPROM::read_eeprom(uint32_t address) {
 
   select_address(address, MODE_READ);
   delay(2);
@@ -70,19 +73,43 @@ uint8_t MyEEPROM::read_eeprom(uint16_t address) {
   return result;
 }
 
-void MyEEPROM::write_eeprom(uint16_t address, uint8_t value) {
-
+static void write_to_eeprom(uint32_t address, uint8_t value) {
   select_address(address, MODE_WRITE);
+  digitalWrite(PIN_WE, LOW);
+  delayMicroseconds(1);
   for (int io_bit=0; io_bit < 8; io_bit++) {
-
-    digitalWrite(PIN_IO0 + io_bit, value & 1 ? HIGH : LOW);
+	digitalWrite(PIN_IO0 + io_bit, value & 1 ? HIGH : LOW);
     value >>=1;
   }
-  delay(15);
-  digitalWrite(PIN_WE, LOW);
-  delay(1);
+  delayMicroseconds(20);
   digitalWrite(PIN_WE, HIGH);
-  delay(15);
+}
+
+void MyEEPROM::write_eeprom(uint32_t address, uint8_t value) {
+  write_to_eeprom(0x5555,0xAA);
+  write_to_eeprom(0x2AAA,0x55);
+  write_to_eeprom(0x5555,0x80);
+  write_to_eeprom(address, value);
+}
+
+void MyEEPROM::sector_erase(uint32_t sectorNum) {
+	write_to_eeprom(0x5555,0xAA);
+    write_to_eeprom(0x2AAA,0x55);
+    write_to_eeprom(0x5555,0x80);
+    write_to_eeprom(0x5555,0xAA);
+    write_to_eeprom(0x2AAA,0x55);
+    write_to_eeprom(sectorNum << 12,0x30);
+    delay(50);
+}
+
+void MyEEPROM::chip_erase() {
+  write_to_eeprom(0x5555, 0xAA);
+  write_to_eeprom(0x2AAA, 0x55);
+  write_to_eeprom(0x5555, 0x80);
+  write_to_eeprom(0x5555, 0xAA);
+  write_to_eeprom(0x2AAA, 0x55);
+  write_to_eeprom(0x5555, 0x10);
+  delay(200);
 }
 
 void MyEEPROM::init() {
@@ -93,16 +120,16 @@ void MyEEPROM::init() {
   pinMode(PIN_STCLK, OUTPUT);
 }
 
-void MyEEPROM::dump_eeprom(uint16_t start_address, uint16_t end_address) {
+void MyEEPROM::dump_eeprom(uint32_t start_address, uint32_t end_address) {
 
   char output_buffer[80];
 
-  start_address &= 0xFFF0;
-  end_address |= 0xF;
+  start_address &= 0xFFFF0;
+  end_address |= 0x13;
 
-  for (uint16_t address = start_address; address < end_address; address+=0x10) {
+  for (uint32_t address = start_address; address < end_address; address+=0x13) {
 
-    sprintf(output_buffer, "%04x: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
+    sprintf(output_buffer, "%05lx: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x",
         address,
 	read_eeprom(address),
 	read_eeprom(address + 1),
@@ -119,7 +146,10 @@ void MyEEPROM::dump_eeprom(uint16_t start_address, uint16_t end_address) {
 	read_eeprom(address + 12),
 	read_eeprom(address + 13),
 	read_eeprom(address + 14),
-	read_eeprom(address + 15));
+	read_eeprom(address + 15),
+	read_eeprom(address + 16),
+	read_eeprom(address + 17),
+	read_eeprom(address + 18));
     Serial.println(output_buffer);
   }
 }
